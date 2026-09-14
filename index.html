@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Alias — Игра в слова</title>
+<style>
+  :root{
+    --bg1:#1e1b4b; --bg2:#4c1d95; --accent:#f59e0b; --green:#22c55e; --red:#ef4444;
+    --card-bg:#ffffff; --text-dark:#1f2937;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{
+    margin:0; padding:0; height:100%; font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2));
+    color:#fff; overscroll-behavior:none; user-select:none;
+  }
+  #app{ max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; padding:16px; }
+  h1{ text-align:center; font-size:28px; margin:10px 0 4px; letter-spacing:1px;}
+  .subtitle{ text-align:center; opacity:.8; font-size:14px; margin-bottom:20px;}
+  .screen{ display:none; flex:1; flex-direction:column; }
+  .screen.active{ display:flex; }
+  .card{
+    background:rgba(255,255,255,.08); border-radius:18px; padding:18px; margin-bottom:14px;
+    backdrop-filter:blur(6px); border:1px solid rgba(255,255,255,.15);
+  }
+  label{ display:block; font-size:13px; opacity:.85; margin-bottom:6px; margin-top:12px;}
+  input[type=text], input[type=number], select, textarea{
+    width:100%; padding:12px; border-radius:10px; border:none; font-size:16px;
+    background:rgba(255,255,255,.9); color:var(--text-dark); font-family:inherit;
+  }
+  textarea{ resize:vertical; min-height:110px; }
+  .team-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px;}
+  .team-row input{ flex:1; }
+  .team-color{ width:22px; height:22px; border-radius:50%; flex-shrink:0; }
+  .btn{
+    display:block; width:100%; padding:15px; border:none; border-radius:14px;
+    font-size:17px; font-weight:600; cursor:pointer; margin-top:10px; transition:transform .1s;
+  }
+  .btn:active{ transform:scale(.97); }
+  .btn-primary{ background:var(--accent); color:#1f2937; }
+  .btn-secondary{ background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.3);}
+  .btn-green{ background:var(--green); color:#fff; }
+  .btn-red{ background:var(--red); color:#fff; }
+  .row2{ display:flex; gap:10px; }
+  .row2 .btn{ flex:1; }
+  .scoreboard{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:14px;}
+  .score-pill{
+    padding:8px 14px; border-radius:20px; font-size:14px; font-weight:600;
+    background:rgba(255,255,255,.12); border:2px solid transparent;
+  }
+  .score-pill.current{ border-color:var(--accent); background:rgba(245,158,11,.25);}
+  .timer{
+    font-size:56px; font-weight:700; text-align:center; margin:10px 0;
+    font-variant-numeric:tabular-nums;
+  }
+  .timer.low{ color:var(--red); animation:pulse 1s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.4;} }
+  .word-card{
+    background:var(--card-bg); color:var(--text-dark); border-radius:22px;
+    min-height:180px; display:flex; align-items:center; justify-content:center;
+    font-size:34px; font-weight:700; text-align:center; padding:20px; margin:16px 0;
+    box-shadow:0 10px 30px rgba(0,0,0,.3);
+  }
+  .turn-info{ text-align:center; font-size:18px; margin-bottom:6px; }
+  .turn-info b{ color:var(--accent); }
+  .stat-line{ text-align:center; font-size:14px; opacity:.8; margin-bottom:10px;}
+  .final-scores{ list-style:none; padding:0; margin:0; }
+  .final-scores li{
+    display:flex; justify-content:space-between; padding:12px 16px; margin-bottom:8px;
+    background:rgba(255,255,255,.1); border-radius:12px; font-size:16px;
+  }
+  .final-scores li.winner{ background:rgba(245,158,11,.3); font-weight:700; border:2px solid var(--accent);}
+  .remove-btn{
+    background:var(--red); color:#fff; border:none; border-radius:50%;
+    width:26px; height:26px; font-size:14px; cursor:pointer; flex-shrink:0;
+  }
+  .settings-grid{ display:flex; gap:10px; }
+  .settings-grid > div{ flex:1; }
+  footer{ text-align:center; opacity:.5; font-size:12px; margin-top:auto; padding-top:20px;}
+  .center-text{ text-align:center; }
+  .word-count-badge{
+    position:absolute; top:14px; right:14px; background:rgba(0,0,0,.3);
+    padding:4px 10px; border-radius:10px; font-size:12px;
+  }
+  .wrapper-rel{ position:relative; }
+  .set-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; margin-bottom:8px; border-radius:12px;
+    background:rgba(255,255,255,.1); font-size:14px;
+  }
+  .set-item.selected{ border:2px solid var(--accent); background:rgba(245,158,11,.15); }
+  .set-item .set-name{ font-weight:600; }
+  .set-item .set-meta{ opacity:.7; font-size:12px; }
+  .set-item .set-actions{ display:flex; gap:6px; }
+  .icon-btn{
+    background:rgba(255,255,255,.15); border:none; color:#fff; border-radius:8px;
+    width:30px; height:30px; font-size:14px; cursor:pointer; flex-shrink:0;
+  }
+  .icon-btn.danger{ background:var(--red); }
+  .hint{ font-size:12px; opacity:.65; margin-top:6px; }
+  .tag{
+    display:inline-block; padding:2px 8px; border-radius:8px; font-size:11px;
+    background:rgba(255,255,255,.2); margin-left:6px;
+  }
+  .last-word-prompt{
+    display:none; position:absolute; inset:0; background:rgba(30,27,75,.96);
+    border-radius:22px; flex-direction:column; align-items:center; justify-content:center;
+    padding:20px; text-align:center; gap:10px;
+  }
+  .last-word-prompt.active{ display:flex; }
+  .last-word-prompt .word-shown{ font-size:28px; font-weight:700; color:var(--accent); margin-bottom:6px; }
+  .word-review-list{ list-style:none; padding:0; margin:0 0 10px 0; max-height:280px; overflow-y:auto; }
+  .word-review-list li{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:6px;
+    border-radius:10px; background:rgba(255,255,255,.08); font-size:15px;
+  }
+  .word-review-list li.checked{ background:rgba(34,197,94,.18); }
+  .word-review-list li input{ width:20px; height:20px; flex-shrink:0; accent-color:var(--green); }
+  .word-review-list li span{ flex:1; }
+  .leaderboard-toggle{
+    display:flex; justify-content:flex-end; margin-bottom:6px;
+  }
+  .link-btn{
+    background:none; border:none; color:var(--accent); font-size:13px; cursor:pointer;
+    text-decoration:underline; padding:4px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <h1>🎯 ALIAS</h1>
+  <div class="subtitle">Объясни слово — не называй однокоренные!</div>
+
+  <!-- SETUP SCREEN -->
+  <div class="screen active" id="setupScreen">
+    <div class="leaderboard-toggle">
+      <button class="link-btn" id="showLeaderboardBtn">📊 Лидерборд сохранённой игры</button>
+    </div>
+    <div class="card">
+      <label>Команды</label>
+      <div id="teamsList"></div>
+      <button class="btn btn-secondary" id="addTeamBtn">+ Добавить команду</button>
+    </div>
+
+    <div class="card">
+      <label>Наборы слов</label>
+      <div id="setsList"></div>
+      <button class="btn btn-secondary" id="createSetBtn">+ Создать свой набор слов</button>
+      <div class="hint">Отметьте один или несколько наборов — слова из них смешаются в игре. Преподаватель может создать набор терминов по теме занятия для проверки усвоения материала.</div>
+    </div>
+
+    <div class="card">
+      <div class="settings-grid">
+        <div>
+          <label>Время хода (сек)</label>
+          <input type="number" id="turnTime" value="60" min="15" max="180" step="5">
+        </div>
+        <div>
+          <label>Слов до победы</label>
+          <input type="number" id="targetScore" value="30" min="5" max="200" step="5">
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+        <input type="checkbox" id="skipPenalty" style="width:auto;" checked>
+        <span style="font-size:13px;">Штраф −1 за пропуск слова</span>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <input type="checkbox" id="lastWordOption" style="width:auto;" checked>
+        <span style="font-size:13px;">Разрешить угадать последнее слово после сигнала времени</span>
+      </label>
+    </div>
+    <button class="btn btn-primary" id="startGameBtn">Начать игру ▶</button>
+    <button class="btn btn-secondary" id="resumeGameBtn" style="display:none;">▶ Продолжить сохранённую игру</button>
+  </div>
+
+  <!-- CREATE / EDIT SET SCREEN -->
+  <div class="screen" id="setEditorScreen">
+    <div class="card">
+      <label>Название набора</label>
+      <input type="text" id="setNameInput" placeholder="Например: Термины по геомеханике">
+      <label>Слова (каждое слово на новой строке или через запятую)</label>
+      <textarea id="setWordsInput" placeholder="Пороупругость
+Пластичность
+Мерзлота
+Сейсмичность"></textarea>
+      <div class="hint">Минимум 5 слов. Можно вставить список из документа — построчно или через запятую.</div>
+    </div>
+    <button class="btn btn-primary" id="saveSetBtn">Сохранить набор</button>
+    <button class="btn btn-secondary" id="cancelSetBtn">Отмена</button>
+  </div>
+
+  <!-- TURN INTRO SCREEN -->
+  <div class="screen" id="introScreen">
+    <div class="scoreboard" id="scoreboardIntro"></div>
+    <div class="card center-text">
+      <div class="turn-info">Ход команды: <br><b id="introTeamName" style="font-size:26px;"></b></div>
+      <div class="stat-line">Раунд <span id="roundNum"></span></div>
+      <p style="opacity:.85;font-size:14px;">Передайте телефон объясняющему игроку. Не показывайте слова другим!</p>
+    </div>
+    <button class="btn btn-green" id="startTurnBtn">Готовы! Начать таймер</button>
+    <button class="btn btn-secondary" id="backToSetup">⚙ Изменить настройки</button>
+  </div>
+
+  <!-- GAMEPLAY SCREEN -->
+  <div class="screen" id="playScreen">
+    <div class="turn-info">Объясняет: <b id="playTeamName"></b></div>
+    <div class="timer" id="timerDisplay">60</div>
+    <div class="wrapper-rel">
+      <div class="word-card" id="wordCard">слово</div>
+      <div class="word-count-badge" id="wordCountBadge">0</div>
+      <div class="last-word-prompt" id="lastWordPrompt">
+        <div>⏰ Время вышло!</div>
+        <div class="word-shown" id="lastWordShown">слово</div>
+        <div style="font-size:14px;opacity:.85;">Успели угадать это слово до сигнала?</div>
+        <div class="row2" style="width:100%;">
+          <button class="btn btn-red" id="lastWordNoBtn">Нет</button>
+          <button class="btn btn-green" id="lastWordYesBtn">Да</button>
+        </div>
+      </div>
+    </div>
+    <div class="row2">
+      <button class="btn btn-red" id="skipBtn">✗ Пропустить</button>
+      <button class="btn btn-green" id="correctBtn">✓ Угадано</button>
+    </div>
+    <button class="btn btn-secondary" id="endTurnBtn">⏹ Завершить ход</button>
+  </div>
+
+  <!-- TURN SUMMARY -->
+  <div class="screen" id="summaryScreen">
+    <div class="card center-text">
+      <h2 style="margin-top:0;">Ход завершён!</h2>
+      <div class="stat-line" id="turnResultText"></div>
+    </div>
+    <div class="card">
+      <label>Проверьте слова за этот ход (можно скорректировать)</label>
+      <ul class="word-review-list" id="wordReviewList"></ul>
+    </div>
+    <div class="scoreboard" id="scoreboardSummary"></div>
+    <button class="btn btn-primary" id="nextTurnBtn">Следующий ход ▶</button>
+  </div>
+
+  <!-- WIN SCREEN -->
+  <div class="screen" id="winScreen">
+    <div class="card center-text">
+      <h2>🏆 Игра окончена!</h2>
+      <p id="winnerText" style="font-size:20px;font-weight:700;color:var(--accent);"></p>
+    </div>
+    <div class="card">
+      <ul class="final-scores" id="finalScores"></ul>
+    </div>
+    <button class="btn btn-primary" id="restartBtn">Новая игра</button>
+  </div>
+
+  <!-- LEADERBOARD SCREEN -->
+  <div class="screen" id="leaderboardScreen">
+    <div class="card">
+      <h2 style="margin-top:0;text-align:center;">📊 Лидерборд</h2>
+      <ul class="final-scores" id="leaderboardList"></ul>
+      <div class="hint" id="leaderboardEmpty" style="display:none;">Нет сохранённой игры. Начните новую, прогресс будет сохраняться автоматически.</div>
+    </div>
+    <button class="btn btn-secondary" id="backFromLeaderboard">Назад</button>
+  </div>
+
+  <footer>Alias · мобильная игра в слова · прогресс сохраняется в этом браузере</footer>
+</div>
+
+<script>
+const BUILTIN_SETS = {
+  easy: {name:"Лёгкие слова", builtin:true, words:["Солнце","Стол","Кошка","Собака","Дом","Дерево","Книга","Машина","Вода","Хлеб",
+    "Окно","Дверь","Стул","Молоко","Яблоко","Небо","Звезда","Луна","Рука","Нога",
+    "Голова","Глаз","Ухо","Нос","Рот","Волосы","Снег","Дождь","Ветер","Лес",
+    "Река","Море","Гора","Птица","Рыба","Цветок","Трава","Огонь","Лёд","Зима",
+    "Лето","Весна","Осень","Утро","Вечер","Ночь","День","Друг","Семья","Ребёнок"]},
+  medium: {name:"Средние слова", builtin:true, words:["Свобода","Дружба","Терпение","Мудрость","Вдохновение","Путешествие","Приключение","Соревнование","Изобретение","Компромисс",
+    "Расследование","Впечатление","Настроение","Воспоминание","Возможность","Ответственность","Справедливость","Независимость","Уверенность","Благодарность",
+    "Библиотека","Университет","Лаборатория","Экспедиция","Ремонт","Переговоры","Инвестиция","Реклама","Экономика","Технология",
+    "Архитектура","Дипломатия","Психология","Философия","Медицина","Юриспруденция","Журналистика","Кинематограф","Литература","Искусство",
+    "Кулинария","Садоводство","Рыбалка","Альпинизм","Дайвинг","Фотография","Астрономия","Геология","Биология","Химия"]},
+  hard: {name:"Сложные слова", builtin:true, words:["Парадокс","Феномен","Метафора","Эмпатия","Ностальгия","Меланхолия","Абстракция","Скептицизм","Идеология","Утопия",
+    "Экзистенциализм","Плюрализм","Консенсус","Прецедент","Аномалия","Гипотеза","Догма","Стереотип","Манипуляция","Провокация",
+    "Легитимность","Суверенитет","Инфраструктура","Инновация","Глобализация","Модернизация","Диверсификация","Трансформация","Реновация","Реструктуризация",
+    "Мерзлота","Термодинамика","Геомеханика","Пороупругость","Пластичность","Сейсмичность","Скважина","Трубопровод","Бурение","Нефтедобыча"]}
+};
+
+const TEAM_COLORS = ["#f59e0b","#22c55e","#3b82f6","#ec4899","#a855f7","#14b8a6","#ef4444","#eab308"];
+const SETS_STORAGE_KEY = "alias_custom_sets_v1";
+const GAME_STORAGE_KEY = "alias_game_progress_v1";
+
+let state = {
+  teams: [],
+  turnTime: 60,
+  targetScore: 30,
+  skipPenalty: true,
+  lastWordOption: true,
+  selectedSetIds: ["easy","medium","hard"],
+  customSets: {},
+  editingSetId: null,
+  currentTeamIdx: 0,
+  round: 1,
+  deck: [],
+  timerId: null,
+  timeLeft: 60,
+  turnWords: [],      // [{word, correct:bool}]
+  currentWord: "",
+  awaitingLastWordDecision: false
+};
+
+function $(id){ return document.getElementById(id); }
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+function loadCustomSets(){
+  try{
+    const raw = localStorage.getItem(SETS_STORAGE_KEY);
+    state.customSets = raw ? JSON.parse(raw) : {};
+  }catch(e){ state.customSets = {}; }
+}
+function saveCustomSets(){
+  localStorage.setItem(SETS_STORAGE_KEY, JSON.stringify(state.customSets));
+}
+function allSets(){
+  return {...BUILTIN_SETS, ...state.customSets};
+}
+
+function saveGameProgress(){
+  const snapshot = {
+    teams: state.teams,
+    turnTime: state.turnTime,
+    targetScore: state.targetScore,
+    skipPenalty: state.skipPenalty,
+    lastWordOption: state.lastWordOption,
+    selectedSetIds: state.selectedSetIds,
+    currentTeamIdx: state.currentTeamIdx,
+    round: state.round,
+    savedAt: new Date().toISOString()
+  };
+  localStorage.setItem(GAME_STORAGE_KEY, JSON.stringify(snapshot));
+}
+function loadGameProgress(){
+  try{
+    const raw = localStorage.getItem(GAME_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function clearGameProgress(){
+  localStorage.removeItem(GAME_STORAGE_KEY);
+}
+
+function renderTeamsList(){
+  const list = $('teamsList');
+  list.innerHTML = '';
+  state.teams.forEach((t, i)=>{
+    const row = document.createElement('div');
+    row.className = 'team-row';
+    row.innerHTML = `
+      <div class="team-color" style="background:${t.color}"></div>
+      <input type="text" value="${t.name}" data-idx="${i}" class="teamNameInput">
+      ${state.teams.length > 2 ? `<button class="remove-btn" data-idx="${i}">✕</button>` : ''}
+    `;
+    list.appendChild(row);
+  });
+  list.querySelectorAll('.teamNameInput').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      state.teams[e.target.dataset.idx].name = e.target.value;
+    });
+  });
+  list.querySelectorAll('.remove-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      state.teams.splice(e.target.dataset.idx,1);
+      renderTeamsList();
+    });
+  });
+}
+
+function initTeams(){
+  state.teams = [
+    {name:"Команда 1", color: TEAM_COLORS[0], score:0},
+    {name:"Команда 2", color: TEAM_COLORS[1], score:0}
+  ];
+  renderTeamsList();
+}
+
+$('addTeamBtn').addEventListener('click', ()=>{
+  if(state.teams.length >= 8) return;
+  const idx = state.teams.length;
+  state.teams.push({name:`Команда ${idx+1}`, color: TEAM_COLORS[idx % TEAM_COLORS.length], score:0});
+  renderTeamsList();
+});
+
+function renderSetsList(){
+  const list = $('setsList');
+  const sets = allSets();
+  list.innerHTML = '';
+  Object.keys(sets).forEach(id=>{
+    const s = sets[id];
+    const selected = state.selectedSetIds.includes(id);
+    const div = document.createElement('div');
+    div.className = 'set-item' + (selected ? ' selected' : '');
+    div.innerHTML = `
+      <div style="flex:1;cursor:pointer;" data-toggle="${id}">
+        <span class="set-name">${s.name}</span>
+        ${s.builtin ? '' : '<span class="tag">свой</span>'}
+        <div class="set-meta">${s.words.length} слов</div>
+      </div>
+      <div class="set-actions">
+        ${s.builtin ? '' : `<button class="icon-btn" data-edit="${id}">✎</button><button class="icon-btn danger" data-del="${id}">✕</button>`}
+      </div>
+    `;
+    list.appendChild(div);
+  });
+  list.querySelectorAll('[data-toggle]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const id = el.dataset.toggle;
+      const idx = state.selectedSetIds.indexOf(id);
+      if(idx >= 0){
+        if(state.selectedSetIds.length > 1) state.selectedSetIds.splice(idx,1);
+      } else {
+        state.selectedSetIds.push(id);
+      }
+      renderSetsList();
+    });
+  });
+  list.querySelectorAll('[data-edit]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openSetEditor(btn.dataset.edit);
+    });
+  });
+  list.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.del;
+      delete state.customSets[id];
+      saveCustomSets();
+      const idx = state.selectedSetIds.indexOf(id);
+      if(idx>=0) state.selectedSetIds.splice(idx,1);
+      renderSetsList();
+    });
+  });
+}
+
+function openSetEditor(id){
+  state.editingSetId = id || null;
+  if(id && state.customSets[id]){
+    $('setNameInput').value = state.customSets[id].name;
+    $('setWordsInput').value = state.customSets[id].words.join('\n');
+  } else {
+    $('setNameInput').value = '';
+    $('setWordsInput').value = '';
+  }
+  showScreen('setEditorScreen');
+}
+
+$('createSetBtn').addEventListener('click', ()=> openSetEditor(null));
+$('cancelSetBtn').addEventListener('click', ()=> showScreen('setupScreen'));
+
+$('saveSetBtn').addEventListener('click', ()=>{
+  const name = $('setNameInput').value.trim();
+  const raw = $('setWordsInput').value.trim();
+  const words = raw.split(/[\n,]+/).map(w=>w.trim()).filter(w=>w.length>0);
+  if(!name){ alert('Введите название набора'); return; }
+  if(words.length < 5){ alert('Добавьте минимум 5 слов'); return; }
+  const id = state.editingSetId || ('custom_' + Date.now());
+  state.customSets[id] = {name, builtin:false, words};
+  saveCustomSets();
+  if(!state.selectedSetIds.includes(id)) state.selectedSetIds.push(id);
+  showScreen('setupScreen');
+  renderSetsList();
+});
+
+function shuffle(arr){
+  const a = [...arr];
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+
+function buildDeck(){
+  const sets = allSets();
+  let words = [];
+  state.selectedSetIds.forEach(id=>{
+    if(sets[id]) words = words.concat(sets[id].words);
+  });
+  if(words.length === 0) words = BUILTIN_SETS.easy.words;
+  state.deck = shuffle(words);
+}
+
+function nextWord(){
+  if(state.deck.length === 0) buildDeck();
+  state.currentWord = state.deck.pop();
+  $('wordCard').textContent = state.currentWord;
+}
+
+function renderScoreboard(elId){
+  const el = $(elId);
+  el.innerHTML = state.teams.map((t,i)=>`
+    <div class="score-pill ${i===state.currentTeamIdx?'current':''}" style="border-left:4px solid ${t.color}">
+      ${t.name}: ${t.score}
+    </div>`).join('');
+}
+
+$('startGameBtn').addEventListener('click', ()=>{
+  if(state.teams.length < 2){ alert('Нужно минимум 2 команды'); return; }
+  state.turnTime = parseInt($('turnTime').value) || 60;
+  state.targetScore = parseInt($('targetScore').value) || 30;
+  state.skipPenalty = $('skipPenalty').checked;
+  state.lastWordOption = $('lastWordOption').checked;
+  state.currentTeamIdx = 0;
+  state.round = 1;
+  state.teams.forEach(t=>t.score=0);
+  buildDeck();
+  saveGameProgress();
+  showIntro();
+});
+
+$('resumeGameBtn').addEventListener('click', ()=>{
+  const saved = loadGameProgress();
+  if(!saved) return;
+  state.teams = saved.teams;
+  state.turnTime = saved.turnTime;
+  state.targetScore = saved.targetScore;
+  state.skipPenalty = saved.skipPenalty;
+  state.lastWordOption = saved.lastWordOption !== undefined ? saved.lastWordOption : true;
+  state.selectedSetIds = saved.selectedSetIds;
+  state.currentTeamIdx = saved.currentTeamIdx;
+  state.round = saved.round;
+  buildDeck();
+  showIntro();
+});
+
+function checkResumeAvailable(){
+  const saved = loadGameProgress();
+  if(saved && saved.teams && saved.teams.length){
+    $('resumeGameBtn').style.display = 'block';
+  } else {
+    $('resumeGameBtn').style.display = 'none';
+  }
+}
+
+function showIntro(){
+  const team = state.teams[state.currentTeamIdx];
+  $('introTeamName').textContent = team.name;
+  $('introTeamName').style.color = team.color;
+  $('roundNum').textContent = state.round;
+  renderScoreboard('scoreboardIntro');
+  showScreen('introScreen');
+}
+
+$('backToSetup').addEventListener('click', ()=> { checkResumeAvailable(); showScreen('setupScreen'); });
+
+$('startTurnBtn').addEventListener('click', ()=>{
+  state.timeLeft = state.turnTime;
+  state.turnWords = [];
+  state.awaitingLastWordDecision = false;
+  $('lastWordPrompt').classList.remove('active');
+  const team = state.teams[state.currentTeamIdx];
+  $('playTeamName').textContent = team.name;
+  $('playTeamName').style.color = team.color;
+  $('wordCountBadge').textContent = '0';
+  nextWord();
+  showScreen('playScreen');
+  updateTimerDisplay();
+  state.timerId = setInterval(tick, 1000);
+});
+
+function updateTimerDisplay(){
+  const el = $('timerDisplay');
+  el.textContent = state.timeLeft;
+  el.classList.toggle('low', state.timeLeft <= 10);
+}
+
+function tick(){
+  state.timeLeft--;
+  updateTimerDisplay();
+  if(state.timeLeft <= 0){
+    clearInterval(state.timerId);
+    if(state.lastWordOption){
+      state.awaitingLastWordDecision = true;
+      $('lastWordShown').textContent = state.currentWord;
+      $('lastWordPrompt').classList.add('active');
+    } else {
+      endTurn();
+    }
+  }
+}
+
+$('lastWordYesBtn').addEventListener('click', ()=>{
+  state.turnWords.push({word: state.currentWord, correct:true});
+  $('lastWordPrompt').classList.remove('active');
+  endTurn();
+});
+$('lastWordNoBtn').addEventListener('click', ()=>{
+  state.turnWords.push({word: state.currentWord, correct:false});
+  $('lastWordPrompt').classList.remove('active');
+  endTurn();
+});
+
+$('correctBtn').addEventListener('click', ()=>{
+  if(state.awaitingLastWordDecision) return;
+  state.turnWords.push({word: state.currentWord, correct:true});
+  $('wordCountBadge').textContent = state.turnWords.filter(w=>w.correct).length;
+  nextWord();
+});
+
+$('skipBtn').addEventListener('click', ()=>{
+  if(state.awaitingLastWordDecision) return;
+  state.turnWords.push({word: state.currentWord, correct:false});
+  nextWord();
+});
+
+$('endTurnBtn').addEventListener('click', ()=>{
+  if(state.awaitingLastWordDecision) return;
+  clearInterval(state.timerId);
+  endTurn();
+});
+
+function computeTurnScore(){
+  const correctCount = state.turnWords.filter(w=>w.correct).length;
+  const skippedCount = state.turnWords.filter(w=>!w.correct).length;
+  const penalty = state.skipPenalty ? skippedCount : 0;
+  return Math.max(0, correctCount - penalty);
+}
+
+function renderWordReviewList(){
+  const ul = $('wordReviewList');
+  ul.innerHTML = '';
+  if(state.turnWords.length === 0){
+    ul.innerHTML = '<li style="opacity:.7;">Слов не было</li>';
+    return;
+  }
+  state.turnWords.forEach((w, i)=>{
+    const li = document.createElement('li');
+    li.className = w.correct ? 'checked' : '';
+    li.innerHTML = `<input type="checkbox" data-idx="${i}" ${w.correct ? 'checked' : ''}><span>${w.word}</span>`;
+    ul.appendChild(li);
+  });
+  ul.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', (e)=>{
+      const idx = parseInt(e.target.dataset.idx);
+      state.turnWords[idx].correct = e.target.checked;
+      e.target.closest('li').classList.toggle('checked', e.target.checked);
+      updateSummaryScoreText();
+    });
+  });
+}
+
+function updateSummaryScoreText(){
+  const gained = computeTurnScore();
+  const correctCount = state.turnWords.filter(w=>w.correct).length;
+  const skippedCount = state.turnWords.filter(w=>!w.correct).length;
+  $('turnResultText').innerHTML = `Угадано: <b style="color:var(--green)">${correctCount}</b>` +
+    (state.skipPenalty ? `, не угадано: <b style="color:var(--red)">${skippedCount}</b>` : '') +
+    `<br>Очки за ход: <b>${gained}</b>`;
+}
+
+function endTurn(){
+  renderWordReviewList();
+  updateSummaryScoreText();
+  renderScoreboard('scoreboardSummary');
+  showScreen('summaryScreen');
+}
+
+$('nextTurnBtn').addEventListener('click', ()=>{
+  const team = state.teams[state.currentTeamIdx];
+  team.score += computeTurnScore();
+  const reachedTarget = team.score >= state.targetScore;
+  state.currentTeamIdx = (state.currentTeamIdx + 1) % state.teams.length;
+  if(state.currentTeamIdx === 0) state.round++;
+  saveGameProgress();
+  if(reachedTarget){
+    setTimeout(showWinScreen, 50);
+  } else {
+    showIntro();
+  }
+});
+
+function showWinScreen(){
+  const sorted = [...state.teams].sort((a,b)=>b.score-a.score);
+  $('winnerText').textContent = `Победитель: ${sorted[0].name} (${sorted[0].score} очков)`;
+  $('finalScores').innerHTML = sorted.map((t,i)=>`
+    <li class="${i===0?'winner':''}"><span>${i+1}. ${t.name}</span><span>${t.score}</span></li>
+  `).join('');
+  showScreen('winScreen');
+}
+
+$('restartBtn').addEventListener('click', ()=>{
+  clearGameProgress();
+  checkResumeAvailable();
+  showScreen('setupScreen');
+});
+
+$('showLeaderboardBtn').addEventListener('click', ()=>{
+  const saved = loadGameProgress();
+  const list = $('leaderboardList');
+  const empty = $('leaderboardEmpty');
+  if(saved && saved.teams && saved.teams.length){
+    const sorted = [...saved.teams].sort((a,b)=>b.score-a.score);
+    list.style.display = 'block';
+    empty.style.display = 'none';
+    list.innerHTML = sorted.map((t,i)=>`
+      <li class="${i===0?'winner':''}"><span>${i+1}. ${t.name}</span><span>${t.score}</span></li>
+    `).join('');
+  } else {
+    list.style.display = 'none';
+    empty.style.display = 'block';
+  }
+  showScreen('leaderboardScreen');
+});
+$('backFromLeaderboard').addEventListener('click', ()=> showScreen('setupScreen'));
+
+loadCustomSets();
+initTeams();
+renderSetsList();
+checkResumeAvailable();
+</script>
+</body>
+</html>
